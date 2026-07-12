@@ -13,6 +13,12 @@
 
 <br/>
 
+<p align="center">
+  <img src="docs/截图/001.jpg" alt="NexusCode 终端截图" width="720" style="border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.15);">
+</p>
+
+<br/>
+
 <h3 align="center">CLI Vibe Coding Agent · AI编程代理</h3>
 <p align="center">单一二进制 · 配置声明式 · MCP 插件化 · 缓存深度优化<br/>即装即用的 DeepSeek Vibe Coding Agent。</p>
 

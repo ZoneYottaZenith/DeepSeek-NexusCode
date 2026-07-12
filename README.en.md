@@ -13,8 +13,14 @@
 
 <br/>
 
-<h3 align="center">CLI Vibe Coding Agent</h3>
-<p align="center">Single binary · Declarative config · MCP plugin system · Cache-optimized<br/>A DeepSeek-native Vibe Coding Agent for your terminal.</p>
+<p align="center">
+  <img src="docs/截图/001.jpg" alt="NexusCode terminal screenshot" width="720" style="border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.15);">
+</p>
+
+<br/>
+
+<h3 align="center">CLI Vibe Coding Agent · AI Programming Agent</h3>
+<p align="center">Single binary · Declarative config · MCP plugin system · Cache depth optimization<br/>A plug-and-play DeepSeek Vibe Coding Agent for your terminal.</p>
 
 ---
 
@@ -189,10 +195,10 @@ If not installed, download the LTS version from [nodejs.org](https://nodejs.org/
 npm i -g nexuscode                  # cross-platform, pulls prebuilt native binary
 ```
 
-After installation:
+After installation, use it directly:
 
 ```sh
-nexuscode --help
+nexuscode
 ```
 
 > `npm i -g nexuscode` automatically detects your OS and CPU architecture (Windows/Linux/macOS × amd64/arm64) and installs the matching prebuilt binary. npm acts only as the installer; no Node.js runtime is needed to run NexusCode.
