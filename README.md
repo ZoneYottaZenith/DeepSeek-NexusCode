@@ -1,14 +1,7 @@
 ﻿<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/logo.svg">
-    <img src="docs/logo.svg" alt="NexusCode" width="480"/>
-  </picture>
-</p>
-
-<p align="center">
-  <strong>简体中文</strong>
-  &nbsp;·&nbsp;
-  <a href="./README.en.md">English</a>
+  <span style="display:inline-block;background:#0969da;color:#ffffff;padding:4px 22px;border-radius:20px;font-size:14px;font-weight:600;line-height:1.7;">📄 简体中文 · 当前语言</span>
+  <span style="display:inline-block;margin:0 6px;color:#8b949e;">|</span>
+  <a href="./README.en.md" style="display:inline-block;border:1px solid #d0d7de;color:#8b949e;padding:4px 22px;border-radius:20px;font-size:14px;line-height:1.7;text-decoration:none;">📄 English Version</a>
 </p>
 
 <br/>
@@ -26,7 +19,7 @@
 
 ## 概述
 
-NexusCode 是一个以 Agent 为中心设计的终端编程助手。它不是一个调用 LLM API 的脚本——它是一个完整的 Agent 运行时：包含传输无关的会话驱动层、可组合的工具抽象、纵深防御的安全模型、缓存感知的上下文管理，以及 MCP 协议的完整实现。
+NexusCode 是一个以 Agent 为中心设计的终端编程助手。它不是一个调用 LLM API 的脚本——它是一个完整的 Agent 运行时：包含传输无关的会话驱动层、可组合的工具抽象、纵深防御的安全模型、缓存感知的上下文管理、核心的 Agent 编排引擎（harness loop），以及 MCP 协议的完整实现。
 
 核心设计原则：
 
@@ -36,34 +29,46 @@ NexusCode 是一个以 Agent 为中心设计的终端编程助手。它不是一
 
 ## 架构
 
-```
-┌─────────────┐  ┌──────────────┐
-│  Terminal   │  │  HTTP/SSE   │
-│  TUI (Bubble│  │  Server     │
-│  Tea)       │  │             │
-└──────┬──────┘  └──────┬───────┘
-       │                │
-       └────────────────┘
-                        │
-               ┌────────▼────────┐
-               │   Controller    │  ← 传输无关的会话驱动层
-               │  (control包)    │     命令 + 事件流
-               └────────┬────────┘
-                        │
-          ┌─────────────┼─────────────┐
-          │             │             │
-   ┌──────▼──────┐ ┌───▼────┐ ┌──────▼──────┐
-   │   Agent     │ │ Plugin │ │   Memory    │
-   │ (工具循环)   │ │ (MCP)  │ │ (记忆系统)   │
-   └──────┬──────┘ └────────┘ └─────────────┘
-          │
-   ┌──────┼──────────┬──────────┐
-   │      │          │          │
-┌──▼──┐┌─▼──┐  ┌────▼───┐ ┌───▼───┐
-│Tool ││Perm│  │Sandbox │ │Check- │
-│Reg  ││is- │  │(OS jail│ │point  │
-│istry││sion│  │)       │ │       │
-└─────┘└────┘  └────────┘ └───────┘
+```mermaid
+flowchart TB
+    classDef frontend fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef core fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef infra fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+
+    subgraph FE["前端 Frontend"]
+        TUI["Terminal TUI (Bubble Tea)"]
+        HTTP["HTTP/SSE Server"]
+    end
+
+    C["Controller (control 包)\n传输无关 · 命令 + 事件流"]
+
+    subgraph RT["核心运行时 Core Runtime"]
+        A["Agent (工具循环)"]
+        P["Plugin (MCP)"]
+        M["Memory (记忆系统)"]
+    end
+
+    subgraph IS["基础设施 Infrastructure"]
+        TR["Tool Registry"]
+        PM["Permission Policy"]
+        SB["Sandbox (OS Jail)"]
+        CK["Checkpoint"]
+    end
+
+    TUI --> C
+    HTTP --> C
+    C --> A
+    C --> P
+    C --> M
+    A --> TR
+    A --> PM
+    A --> SB
+    A --> CK
+
+    class TUI,HTTP frontend
+    class C core
+    class A,P,M core
+    class TR,PM,SB,CK infra
 ```
 
 ## 技术要点
@@ -106,6 +111,12 @@ LLM 代理的上下文窗口管理是系统设计的核心约束。NexusCode 围
 
 沙盒是真正的 OS 层 jail，受许可的命令也无法逃逸。Windows 使用独立的原生 helper 二进制实现沙盒化。
 
+### 安全审查与证据系统
+
+NexusCode 内置了一个独立的 **Guardian 安全审查子 Agent**。每次工具调用前，Guardian（使用专用模型、只读工具）实时评估操作风险等级，给出批准建议。内置 circuit breaker：连续 3 次拒绝自动中断执行，防止 agent 失控。
+
+每次任务步骤完成后，agent 必须通过 `complete_step` 工具提供 **执行证据**（命令验证、文件 diff、文件清单或人工确认）。无证据的完成会被拒绝——最终回答还要通过 Readiness Audit 门控检查：未完成的 todo、缺失的项目检查、命令不匹配等都会阻止提交。
+
 ### 工具抽象设计
 
 `tool.Tool` 接口是系统的核心抽象：
@@ -143,6 +154,18 @@ type Checkpoint struct {
 - 支持代码回退 + 会话回退（对话和代码一起 fork）
 - 跨会话持久化，重启后仍可 rewind
 - 仅跟踪可 Preview 的写操作，bash 等不可预测操作不在此列
+- 支持会话分支（`/branch`），从历史任意轮次分叉，代码和对话一起 fork
+
+### LSP 代码智能
+
+内置语言服务器（LSP）管理器，支持 Go、TypeScript、Rust、Python 等主流语言。会话内懒加载，提供四个代码理解工具：
+
+- `lsp_definition` — 跳转到符号定义
+- `lsp_diagnostics` — 获取文件诊断错误
+- `lsp_hover` — 查看符号类型和文档
+- `lsp_references` — 查找所有引用
+
+此外还内置了 Tree-sitter 代码符号索引（`code_index`），无需外部 LSP 即可提供文件大纲和符号定义，让 agent 在离线或轻量场景下也能理解代码结构。
 
 ### MCP 协议实现
 
@@ -155,6 +178,18 @@ type Checkpoint struct {
 | Legacy HTTP+SSE | 兼容 | 初始化 SSE + 调用 HTTP |
 
 插件工具的调用超时、资源管理、断线重连由统一的 `plugin` 包管理。
+
+### 插件包与扩展生态
+
+除 MCP 协议外，NexusCode 还支持 **插件包系统**。插件包是含技能（Skills）、生命周期钩子（Hooks）、MCP 服务器配置的集合，可从 GitHub 仓库一键安装：
+
+```sh
+nexuscode plugin install <github-repo>
+```
+
+支持指定 branch、本地目录安装、dry-run 预览。配套 `plugin list/show/remove/enable/disable/doctor` 全套管理命令。
+
+**Hooks 生命周期钩子**：`PreToolUse`、`PostToolUse`、`PermissionRequest`、`UserPromptSubmit`、`Stop` 等事件可触发本地 shell 命令（退出码 2 可拦截操作），实现自定义工作流自动化。项目级钩子需 `hooks trust` 授权，安全可控。
 
 ### 记忆系统
 
@@ -170,14 +205,17 @@ type Checkpoint struct {
 
 记忆在 session 启动时一次性加载并注入 system prompt，session 内不修改前缀以保持缓存。
 
-### 双模型协作
+### 三种协作模式
 
-可选的规划器-执行器模式：
+NexusCode 支持三种渐进式的协作模式：
 
-- **Planner**：使用只读工具集调研代码、分析依赖、制定执行计划
-- **Executor**：根据计划使用完整工具集实施修改
-- 两个模型运行在独立 session 中，互不干扰各自的 prompt 前缀缓存
-- 规划器可通过 `[planner_requires_approval]` 请求用户审批，或通过 `<planner-ask>` 向用户提问
+- **Plan 模式**（规划模式）：agent 先用只读工具集调研代码、分析依赖、制定执行计划，确认后再实施修改。两个模型运行在独立 session 中，互不干扰各自的 prompt 前缀缓存。规划器可通过 `[planner_requires_approval]` 请求审批，或通过 `<planner-ask>` 向用户提问。
+- **Goal 模式**（目标模式）：以 todo 清单驱动执行。agent 维护结构化任务列表，每步完成后必须提供执行证据。内置 Strict 严格模式（质量自检）、Idle 空闲检测、AutoResearch 自动调研策略。
+- **Token Economy 模式**（精简模式）：初始只加载核心工具集，按需逐步启用 MCP 连接、技能包、LSP 等能力，避免一次性加载过多工具 schema 浪费 token。
+
+Plan 和 Goal 模式之间可随时切换，`Shift+Tab` 快速进入计划模式。
+
+以上三种协作模式均可配合 **Ask**（默认，每步审批）、**Auto**（低风险自动放行）或 **YOLO**（全自动，`Ctrl+Y` 切换）审批模式使用，互不冲突。
 
 ## 安装
 

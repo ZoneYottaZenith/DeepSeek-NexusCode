@@ -6,9 +6,9 @@
 </p>
 
 <p align="center">
-  <a href="./README.md">简体中文</a>
-  &nbsp;·&nbsp;
-  <strong>English</strong>
+  <a href="./README.md" style="display:inline-block;border:1px solid #d0d7de;color:#8b949e;padding:4px 22px;border-radius:20px;font-size:14px;line-height:1.7;text-decoration:none;">📄 简体中文版</a>
+  <span style="display:inline-block;margin:0 6px;color:#8b949e;">|</span>
+  <span style="display:inline-block;background:#0969da;color:#ffffff;padding:4px 22px;border-radius:20px;font-size:14px;font-weight:600;line-height:1.7;">📄 English · Current Language</span>
 </p>
 
 <br/>
@@ -26,7 +26,7 @@
 
 ## Overview
 
-NexusCode is a terminal-based coding agent designed with an agent-first architecture. It is not a script that calls an LLM API—it is a complete agent runtime: a transport-agnostic session driver, a composable tool abstraction, defense-in-depth security, cache-aware context management, and a full MCP protocol implementation.
+NexusCode is a terminal-based coding agent designed with an agent-first architecture. It is not a script that calls an LLM API—it is a complete agent runtime: a transport-agnostic session driver, a composable tool abstraction, defense-in-depth security, cache-aware context management, a core agent orchestration harness, and a full MCP protocol implementation.
 
 Core design principles:
 
@@ -36,34 +36,46 @@ Core design principles:
 
 ## Architecture
 
-```
-┌─────────────┐  ┌──────────────┐
-│  Terminal   │  │  HTTP/SSE   │
-│  TUI (Bubble│  │  Server     │
-│  Tea)       │  │             │
-└──────┬──────┘  └──────┬───────┘
-       │                │
-       └────────────────┘
-                        │
-               ┌────────▼────────┐
-               │   Controller    │  ← transport-agnostic session driver
-               │  (control pkg)  │     commands + event stream
-               └────────┬────────┘
-                        │
-          ┌─────────────┼─────────────┐
-          │             │             │
-   ┌──────▼──────┐ ┌───▼────┐ ┌──────▼──────┐
-   │   Agent     │ │ Plugin │ │   Memory    │
-   │ (tool loop) │ │ (MCP)  │ │ (memory)    │
-   └──────┬──────┘ └────────┘ └─────────────┘
-          │
-   ┌──────┼──────────┬──────────┐
-   │      │          │          │
-┌──▼──┐┌─▼──┐  ┌────▼───┐ ┌───▼───┐
-│Tool ││Perm│  │Sandbox │ │Check- │
-│Reg  ││is- │  │(OS jail│ │point  │
-│istry││sion│  │)       │ │       │
-└─────┘└────┘  └────────┘ └───────┘
+```mermaid
+flowchart TB
+    classDef frontend fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef core fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef infra fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+
+    subgraph FE["Frontend"]
+        TUI["Terminal TUI (Bubble Tea)"]
+        HTTP["HTTP/SSE Server"]
+    end
+
+    C["Controller (control pkg)\ntransport-agnostic · command + event stream"]
+
+    subgraph RT["Core Runtime"]
+        A["Agent (tool loop)"]
+        P["Plugin (MCP)"]
+        M["Memory"]
+    end
+
+    subgraph IS["Infrastructure"]
+        TR["Tool Registry"]
+        PM["Permission Policy"]
+        SB["Sandbox (OS Jail)"]
+        CK["Checkpoint"]
+    end
+
+    TUI --> C
+    HTTP --> C
+    C --> A
+    C --> P
+    C --> M
+    A --> TR
+    A --> PM
+    A --> SB
+    A --> CK
+
+    class TUI,HTTP frontend
+    class C core
+    class A,P,M core
+    class TR,PM,SB,CK infra
 ```
 
 ## Technical Highlights
@@ -106,6 +118,12 @@ Security is layered into three independent, individually testable tiers:
 
 The sandbox enforces actual OS-level jailing—even permitted commands cannot escape. Windows uses a dedicated native helper binary for sandboxing.
 
+### Security Review & Evidence System
+
+NexusCode includes a dedicated **Guardian security sub-agent**. Before every tool call, Guardian (using its own model and read-only tools) evaluates the operation's risk level in real-time and provides an approval recommendation. A built-in circuit breaker halts execution after 3 consecutive rejections.
+
+After each task step, the agent must provide **proof of execution** via the `complete_step` tool—command verification, file diffs, file manifests, or manual confirmation. Completions without evidence are rejected. The final answer also passes through a Readiness Audit gate: unfinished todos, missing checks, and command mismatches all block submission.
+
 ### Tool Abstraction Design
 
 The `tool.Tool` interface is the system's core abstraction:
@@ -143,6 +161,18 @@ type Checkpoint struct {
 - Supports code rewind + conversation rewind (fork both together)
 - Persisted across sessions, available after restart
 - Only tracks Previewable write operations; bash and other unpredictable operations are excluded by design
+- Supports session branching (`/branch`): fork code and conversation together from any historical turn
+
+### LSP Code Intelligence
+
+Built-in Language Server Protocol manager supporting Go, TypeScript, Rust, Python, and more. Lazily initialized per session, exposing four code intelligence tools:
+
+- `lsp_definition` — navigate to symbol definitions
+- `lsp_diagnostics` — retrieve file diagnostics and errors
+- `lsp_hover` — inspect symbol types and documentation
+- `lsp_references` — find all references
+
+A Tree-sitter-based code symbol index (`code_index`) is also included, providing file outlines and symbol candidates without requiring an external LSP—enabling code understanding in offline or lightweight scenarios.
 
 ### MCP Protocol Implementation
 
@@ -155,6 +185,18 @@ Full Model Context Protocol implementation (JSON-RPC 2.0) with three transport s
 | Legacy HTTP+SSE | Compatibility | SSE initialization + HTTP calls |
 
 Plugin call timeout, resource management, and reconnection are handled by the unified `plugin` package.
+
+### Plugin Packages & Ecosystem
+
+Beyond MCP, NexusCode supports a **plugin package system**. A plugin package bundles skills, lifecycle hooks, and MCP server configurations into a single installable unit from a GitHub repository:
+
+```sh
+nexuscode plugin install <github-repo>
+```
+
+Supports branch pinning, local directory install, and dry-run preview. Full management suite: `plugin list/show/remove/enable/disable/doctor`.
+
+**Lifecycle Hooks**: Events like `PreToolUse`, `PostToolUse`, `PermissionRequest`, `UserPromptSubmit`, and `Stop` can trigger local shell commands (exit code 2 intercepts the operation), enabling custom workflow automation. Project-level hooks require `hooks trust` authorization.
 
 ### Memory System
 
@@ -170,14 +212,17 @@ Quick-add:     #<note> inline addition
 
 Memory is loaded once at session startup and injected into the system prompt. The prefix is never modified mid-session to preserve cache warmth.
 
-### Two-Model Collaboration
+### Three Collaboration Modes
 
-Optional planner-executor mode:
+NexusCode offers three progressive collaboration modes:
 
-- **Planner**: Uses read-only tools to research code, analyze dependencies, and produce an execution plan
-- **Executor**: Implements changes using the full toolset based on the plan
-- Both models run in independent sessions to keep their respective prompt prefix caches stable
-- The planner can request user approval via `[planner_requires_approval]` or ask questions via `<planner-ask>`
+- **Plan Mode**: The agent first researches the codebase with read-only tools, analyzes dependencies, and produces a plan—then executes after confirmation. Both models run in independent sessions to keep their prompt prefix caches stable. The planner can request approval via `[planner_requires_approval]` or ask questions via `<planner-ask>`.
+- **Goal Mode**: Todo-driven execution. The agent maintains a structured task list, and each step requires proof of execution before proceeding. Features Strict mode (quality self-checks), Idle detection, and AutoResearch strategy.
+- **Token Economy Mode**: Starts with only core tools loaded, then incrementally enables MCP connections, skill packages, and LSP as needed—avoiding wasted tokens from unused tool schemas.
+
+Switch between Plan and Goal mode at any time; press `Shift+Tab` to quickly enter Plan mode.
+
+All three collaboration modes can be paired with **Ask** (default, step-by-step approval), **Auto** (low-risk operations pass automatically), or **YOLO** (full auto-pilot, `Ctrl+Y` to toggle)—they are independent dimensions.
 
 ## Installation
 
