@@ -1,7 +1,7 @@
 ﻿<p align="center">
-  <span style="display:inline-block;background:#0969da;color:#ffffff;padding:4px 22px;border-radius:20px;font-size:14px;font-weight:600;line-height:1.7;">📄 简体中文 · 当前语言</span>
-  <span style="display:inline-block;margin:0 6px;color:#8b949e;">|</span>
-  <a href="./README.en.md" style="display:inline-block;border:1px solid #d0d7de;color:#8b949e;padding:4px 22px;border-radius:20px;font-size:14px;line-height:1.7;text-decoration:none;">📄 English Version</a>
+  <strong>📄 简体中文</strong>
+  &nbsp;·&nbsp;
+  <a href="./README.en.md">📄 English</a>
 </p>
 
 <br/>

@@ -6,9 +6,9 @@
 </p>
 
 <p align="center">
-  <a href="./README.md" style="display:inline-block;border:1px solid #d0d7de;color:#8b949e;padding:4px 22px;border-radius:20px;font-size:14px;line-height:1.7;text-decoration:none;">📄 简体中文版</a>
-  <span style="display:inline-block;margin:0 6px;color:#8b949e;">|</span>
-  <span style="display:inline-block;background:#0969da;color:#ffffff;padding:4px 22px;border-radius:20px;font-size:14px;font-weight:600;line-height:1.7;">📄 English · Current Language</span>
+  <a href="./README.md">📄 简体中文</a>
+  &nbsp;·&nbsp;
+  <strong>📄 English</strong>
 </p>
 
 <br/>
