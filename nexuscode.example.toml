@@ -1,0 +1,259 @@
+# NexusCode configuration.
+# Resolution order: flag > ./nexuscode.toml > <NexusCode home>/config.toml > built-in defaults.
+# Fields marked user/global only are not overridden by ./nexuscode.toml.
+# Provider entries name secrets via api_key_env; saved key values live in
+# NexusCode's global <NexusCode home>/.env. Never put API key values here.
+
+default_model = "deepseek"   # a provider name (→ its default model) or "provider/model"
+# language      = "zh"   # ui language; empty = auto-detect from $LANG / $NEXUSCODE_LANG
+
+[ui]
+theme = "auto"   # auto|dark|light; controls CLI colors only; NEXUSCODE_THEME can override per run
+# theme_style = "graphite"   # graphite|aurora|slate|carbon|nocturne|amber and legacy aliases
+# shortcut_layout = "desktop"   # classic|desktop; compatibility setting; Shift+Tab toggles Plan, Ctrl+Y toggles YOLO
+# cursor_shape = "underline"   # block|underline|bar; text input cursor shape; default underline to avoid CJK rendering artifacts
+
+[desktop]
+layout_style = "classic"   # classic|workbench|creation; desktop layout style
+# theme = "auto"   # desktop only: auto|dark|light
+# theme_style = "graphite"   # graphite|aurora|slate|carbon|nocturne|amber and legacy aliases
+
+[notifications]
+enabled = false   # system notifications for CLI and desktop turns; default off
+turn_done = true   # notify when a turn finishes
+approval_request = true   # notify when a tool approval is waiting
+ask_request = true   # notify when a question is waiting
+
+[agent]
+system_prompt = """
+You are NexusCode, a coding agent focused on executing code tasks.
+Use the provided tools to read and write files and run shell commands.
+Principles: understand the request before acting; verify with tools instead of
+guessing; keep changes minimal and correct; briefly summarize what you did."""
+# system_prompt_file = "prompts/system.md"   # overrides system_prompt when set
+max_steps         = 0    # user/global only; executor tool-call rounds; 0 = no limit
+planner_max_steps = 0    # user/global only; planner read-only tool-call rounds; 0 = no limit
+temperature       = 0.0
+auto_plan         = "off"   # user-level only; ignored in project nexuscode.toml
+memory_compiler = { enabled = true }   # user-level only; Memory v5 execution compiler
+# reasoning_language = "auto"   # visible reasoning text: auto|zh|en
+# auto_plan_classifier = "deepseek-flash"   # optional; only used for borderline tasks
+# plan_mode_allowed_tools = ["custom_reader"]   # extra read-only custom tools; cannot unlock bash/task/run_skill
+# plan_mode_read_only_commands = ["gh issue view", "gh pr diff"]   # extra read-only shell prefixes for plan mode
+soft_compact_ratio  = 0.5   # notice only; keeps the cache-first prefix intact
+tool_result_snip_ratio = 0.6   # snip stale tool results before summary compaction
+compact_ratio       = 0.8   # try compacting when prompt reaches this fraction
+compact_force_ratio = 0.9   # force compacting at this high-water mark
+# planner_model = "deepseek-pro"   # optional: enable two-model collaboration
+# subagent_model = "deepseek-pro"   # optional default for runAs=subagent skills
+# subagent_models = { review = "deepseek-pro", security_review = "deepseek-pro" }   # per-skill overrides
+# output_style = "explanatory"   # persona/tone folded into the prompt: explanatory | learning | concise,
+#                                  or a custom .nexuscode/output-styles/<name>.md ; empty = default
+
+# A provider is a vendor endpoint (one base_url + key) that offers one or more
+# models. Use `models = [...]` to expose several under a single entry — switching
+# models reuses the same connection; no need to re-declare base_url/api_key.
+# In the desktop app, Settings -> Model -> Access -> Add provider includes
+# recommended editable presets for Kimi CN/Global, Kimi Coding Plan, MiMo API
+# and Anthropic/token-plan regions, MiniMax CN/Global API and Anthropic routes,
+# GLM/Z.AI CN/Global API and coding-plan routes, OpenCode Go/Zen, Qwen/DashScope
+# CN/Global API and coding-plan routes, StepFun, NovitaAI, GMI, Vercel AI
+# Gateway, HuggingFace, NVIDIA, KiloCode, and Ollama Cloud.
+[[providers]]
+name        = "deepseek"
+kind        = "openai"
+base_url    = "https://api.deepseek.com"
+models      = ["deepseek-v4-flash", "deepseek-v4-pro"]
+default     = "deepseek-v4-flash"   # optional; defaults to the first of `models`
+api_key_env = "DEEPSEEK_API_KEY"
+context_window = 1000000
+# Official DeepSeek providers seed RMB prices by default.
+# Set prices explicitly only when you want to pin a currency/rate.
+# prices = { "deepseek-v4-flash" = { cache_hit = 0.02, input = 1, output = 2, currency = "¥" }, "deepseek-v4-pro" = { cache_hit = 0.025, input = 3, output = 6, currency = "¥" } }   # per 1M tokens
+# DeepSeek thinking is always on; effort: high | max. Omit for auto (provider default).
+effort      = "high"
+
+# A single-model provider still works (use `model = "..."`) — pick this form when
+# a model needs its own base_url / context_window / price.
+
+# Custom /effort levels for a provider. When supported_efforts is set, the
+# /effort command exposes these levels; default_effort is what "/effort auto"
+# (or unset) resolves to. Leave both commented to keep the built-in defaults
+# (DeepSeek models: high|max; Anthropic: low|medium|high|xhigh|max). DeepSeek
+# models behind a proxy are detected by model name; set reasoning_protocol =
+# "none" to disable that or "openai" to force ordinary reasoning_effort.
+# Other OpenAI-compatible providers don't expose /effort unless you opt in here.
+#
+# [[providers]]
+# name           = "openai-compatible-custom"
+# kind           = "openai"
+# base_url       = "https://api.example.com/v1"
+# model          = "example-reasoning-model"
+# api_key_env    = "EXAMPLE_API_KEY"
+# reasoning_protocol = "openai"   # auto|deepseek|openai|none
+# supported_efforts = ["low", "medium", "high"]
+# default_effort    = "high"
+
+# Anthropic (Claude) — the "anthropic" kind speaks the Messages API directly (no
+# OpenAI shim). base_url is optional (defaults to https://api.anthropic.com). Note:
+# this provider does not enable extended thinking and does not send temperature —
+# current Claude models reject sampling params (see internal/provider/anthropic).
+# Some Anthropic-compatible gateways use Bearer auth instead of x-api-key; set
+# auth_header = true for those (for example MiniMax Global or Vercel AI Gateway).
+[[providers]]
+name           = "claude"
+kind           = "anthropic"
+model          = "claude-opus-4-8"
+api_key_env    = "ANTHROPIC_API_KEY"
+context_window = 1000000
+price          = { cache_hit = 0.5, input = 5, output = 25, currency = "$" }   # per 1M tokens
+# Extended thinking (anthropic kind only; round-trips the signed reasoning block
+# across tool calls). Omit to disable. effort: low | medium | high | xhigh | max.
+thinking       = "adaptive"
+effort         = "high"
+
+[environment]
+enabled = true   # inject a stable startup summary of OS, shell, and common tools into the prompt
+# [environment.tools]
+# go = "/opt/homebrew/bin/go"   # optional trusted executable path; workspace-local paths are not auto-executed
+
+[tools]
+enabled = []   # empty = all built-in tools
+bash_timeout_seconds = 120   # foreground safety cap; set 0 for no tool-local cap
+mcp_call_timeout_seconds = 300   # default MCP call safety cap; per-plugin/tool overrides may raise it
+
+[tools.background_jobs]
+stalled_warning_seconds = 900   # warn once per background job after this many quiet seconds; 0 disables
+
+# Sandbox confinement bounds the blast radius of tool calls. Writers may only
+# modify workspace_root (empty = current directory) plus allow_write. forbid_read
+# hides sensitive directories from read/list/search tools and from sandboxed bash
+# while OS-level sandboxing is active. Use absolute paths or ${HOME}; "~" is not
+# expanded in config values.
+# [sandbox]
+# workspace_root = ""
+# allow_write    = ["/tmp"]
+# forbid_read    = ["${HOME}/.ssh"]
+# bash           = "enforce"   # enforce (default) | off; native Windows uses its helper sandbox, and without any OS sandbox backend, enforce refuses bash
+# network        = true
+
+# Skills are invokable playbooks (SKILL.md / <name>.md with frontmatter), found
+# under .nexuscode/skills, .agents/skills, .agent/skills, .claude/skills (project)
+# and the same dirs under ~ (global). Built-ins (explore/research/review/security-review/test)
+# ship out of the box. The model invokes them via run_skill / explore / …; you
+# invoke them via /<name>. Manage with /skill (list, show, enable, disable, new, paths).
+# [skills]
+# paths = ["~/my-skills", "../shared/skills"]   # extra "custom"-scope skill roots
+# excluded_paths = ["~/.agents/skills"]         # hide convention roots without deleting folders
+# disabled_skills = ["review"]                  # hide from prompt, slash invocation, and skill tools
+
+# Hooks run shell commands around the loop (PreToolUse / PostToolUse /
+# PermissionRequest / UserPromptSubmit / Stop). They are NOT configured here — put them in
+# settings.json: <NexusCode home>/settings.json (global, always on) and
+# <project>/.nexuscode/settings.json (project, runs only after `/hooks trust`).
+# Exit 0 = pass, exit 2 = block (PreToolUse / UserPromptSubmit only). Example
+# <NexusCode home>/settings.json:
+#   { "hooks": {
+#       "PreToolUse":  [ { "match": "bash", "command": "my-guard.sh" } ],
+#       "PermissionRequest": [ { "match": "bash", "command": "notify-send 'approval needed'" } ],
+#       "PostToolUse": [ { "match": ".*file", "command": "gofmt -w ." } ],
+#       "Stop":        [ { "command": "notify-send 'turn done'" } ] } }
+
+# A custom status line: a command whose first stdout line replaces the built-in
+# data row. It receives {"model","contextUsed","contextWindow"} as JSON on stdin.
+# [statusline]
+# command = "my-statusline.sh"
+
+# External stdio plugins (MCP-compatible); each is a standalone executable.
+# [[plugins]]
+# name    = "example"
+# command = "nexuscode-plugin-example"
+# # Per-server MCP call timeout; 0 keeps the global/default cap.
+# # call_timeout_seconds = 600
+# # Raw MCP tool names with per-tool call timeouts.
+# # tool_timeout_seconds = { "generate_video" = 1800 }
+# # Optional pre-seeded read-only trust. Interactive sessions can also remember
+# # audited third-party readers when you choose "always allow" from the trust prompt.
+# # trusted_read_only_tools = ["search"]
+# # Enabled MCP servers connect automatically in the background after session
+# # start. Use /mcp or the desktop MCP panel to refresh, reconnect, or disable.
+
+# Bot gateway: multi-channel IM bot for QQ, Feishu, and WeChat.
+# Start with `nexuscode bot start --channels qq,feishu,weixin`.
+# All secrets are read from environment variables; never put keys here.
+# [bot]
+# enabled    = false
+# model      = ""        # 用于 bot 的模型，空则用 default_model
+# max_steps  = 25
+# debounce_ms = 1500      # 消息合并窗口（毫秒）
+# queue_mode = "steer"    # steer|followup|collect|interrupt
+# queue_cap  = 20         # 每个会话最多保留的排队消息数
+# queue_drop = "summarize" # summarize|old|new
+# ignore_self_messages = true # 忽略 bot 自己发出的回声消息
+#
+# [bot.self_user_ids]
+# qq = []                 # 可选：各平台 bot 自己的 user/open id
+# feishu = []
+# weixin = []
+#
+# [bot.control]
+# enabled = false         # 本机 loopback HTTP API：GET /status, GET /metrics, POST /send
+# addr = "127.0.0.1:37913"
+# token_env = "NEXUSCODE_BOT_CONTROL_TOKEN"
+#
+# [[bot.routes]]
+# connection_id = "feishu-lark" # 可选；空字段表示通配
+# chat_type = "group"
+# chat_id = "oc_xxx"
+# workspace_root = "/path/to/project"
+# model = "deepseek-pro"
+# tool_approval_mode = "ask"
+#
+# [bot.pairing]
+# enabled = true
+# request_ttl_minutes = 60
+# max_pending_per_platform = 3
+#
+# [bot.allowlist]
+# enabled     = true
+# allow_all   = false     # true 会允许所有可触达用户远程触发 bot，仅限受控环境
+# qq_users    = []
+# feishu_users = []
+# weixin_users = []
+# qq_approvers = []       # 为空时沿用 allowlist 用户可审批的兼容行为
+# feishu_approvers = []
+# weixin_approvers = []
+# qq_admins = []          # 配置后 /yolo 和 /mode 仅限 admin
+# feishu_admins = []
+# weixin_admins = []
+# qq_groups   = []
+# feishu_groups = []
+# weixin_groups = []
+#
+# [bot.qq]
+# enabled        = false
+# app_id         = ""
+# app_secret_env  = "QQ_BOT_APP_SECRET"
+# sandbox        = false   # true 使用 QQ 沙箱 API / gateway
+#
+# [bot.feishu]
+# enabled             = false
+# app_id              = ""
+# app_secret_env       = "FEISHU_BOT_APP_SECRET"
+# verification_token   = ""
+# mode                = "webhook"   # webhook | websocket（websocket 需接官方 SDK 长连接）
+# webhook_port        = 8080
+# require_mention     = true
+#
+# [bot.weixin]
+# enabled   = false
+# account_id = "default"
+# token_env = "WEIXIN_BOT_TOKEN"
+# api_base  = "https://ilinkai.weixin.qq.com"   # Tencent iLink Bot API base URL
+
+[serve]
+# Authentication for the HTTP serve frontend (nexuscode serve).
+# auth_mode = "none"      # none | token | password
+# token      = ""          # pre-shared token for auth_mode = "token" (auto-generated if empty)
+# password_hash = ""       # bcrypt hash for auth_mode = "password". Generate with: nexuscode serve --hash-password <password>
+# behind_proxy = false      # set true when behind a trusted reverse proxy (nginx, Caddy, etc.) that sets X-Forwarded-* headers

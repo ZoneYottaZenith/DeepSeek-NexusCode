@@ -1,0 +1,42 @@
+# Account service for nexuscode.io — email/password auth, sessions, profiles.
+# First deploy:
+#   wrangler d1 create nexuscode-accounts        # paste database_id below
+#   wrangler d1 migrations apply nexuscode-accounts --remote
+#   wrangler secret put SESSION_PEPPER          # any long random string
+#   wrangler secret put RESEND_API_KEY          # only if EMAIL_PROVIDER=resend
+#   wrangler deploy
+name = "nexuscode-accounts"
+main = "src/index.ts"
+compatibility_date = "2026-06-01"
+
+routes = [{ pattern = "id.nexuscode.io", custom_domain = true }]
+
+[vars]
+# Where the web frontend lives — used for email links and post-verify redirects.
+APP_ORIGIN = "https://nexuscode.io"
+# Browsers that may call this API with credentials (comma-separated).
+ALLOWED_ORIGINS = "https://nexuscode.io,https://www.nexuscode.io"
+# Cookie scope. ".nexuscode.io" lets the apex + any subdomain (and the future CLI)
+# share the session. Leave empty for host-only (local dev).
+COOKIE_DOMAIN = ".nexuscode.io"
+# "stub" logs email links to the worker console (local dev); "resend" sends real
+# mail via RESEND_API_KEY.
+EMAIL_PROVIDER = "resend"
+# From-domain must match a verified Resend domain — send.nexuscode.io is verified
+# (DKIM), the apex is not, and Resend rejects sends from an unverified domain.
+MAIL_FROM = "NexusCode <no-reply@send.nexuscode.io>"
+# Comma-separated emails minted as admins on first sign-up.
+ADMIN_EMAILS = ""
+
+[[d1_databases]]
+binding = "DB"
+database_name = "nexuscode-accounts"
+database_id = "bae20011-a6fe-4fad-ae61-a3aaac605e0c"
+migrations_dir = "migrations"
+
+# Per-IP throttle for the sensitive auth endpoints (login/register/forgot/reset).
+[[unsafe.bindings]]
+name = "AUTH_LIMITER"
+type = "ratelimit"
+namespace_id = "2001"
+simple = { limit = 10, period = 60 }

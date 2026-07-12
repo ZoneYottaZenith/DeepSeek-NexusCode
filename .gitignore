@@ -1,0 +1,70 @@
+# Build artifacts
+/bin/
+/dist/
+/stage/
+/npm/.stage/
+/nexuscode
+/nexuscode.exe
+
+# Website (Astro) build output
+/site/dist/
+/site/.astro/
+/site/_preview.png
+
+# Go test/build scratch
+*.test
+*.out
+*.coverprofile
+coverage.out
+cpu.prof
+mem.prof
+
+# Wails desktop artifacts
+/desktop/build/*
+!/desktop/build/appicon.png
+!/desktop/build/appicon.svg
+/desktop/desktop
+/desktop/frontend/dist/*
+!/desktop/frontend/dist/.gitkeep
+/desktop/frontend/sourcemaps/
+/desktop/frontend/wailsjs/
+/desktop/frontend/package.json.md5
+
+# Environment / local config (nexuscode.example.toml is the shared template)
+.env
+.env.local
+*.local
+/nexuscode.toml
+/desktop/.env
+/desktop/nexuscode.toml
+
+# Node / frontend dependencies and caches
+node_modules/
+.pnpm-store/
+.npm/
+
+# Project-local NexusCode state; keep the checked-in review command.
+/.nexuscode/*
+!/.nexuscode/commands/
+!/.nexuscode/commands/review.md
+
+# CodeGraph per-project index (rebuilt locally; never committed)
+.codegraph/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+/site/public/av/
+
+benchmarks/context-maintenance-e2e/run/
+
+# Process documentation (local notes, not for publish)
+/md过程性文档/
+
+# Desktop app (full source excluded from upload)
+/desktop/
+
+# Local scratch
+temp/

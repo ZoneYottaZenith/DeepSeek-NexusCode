@@ -1,0 +1,15 @@
+<svg width="800" height="200" viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NexusCode">
+
+  <text
+    x="400"
+    y="125"
+    text-anchor="middle"
+    font-family="Inter, Helvetica, Arial, sans-serif"
+    font-size="88"
+    font-weight="700"
+    letter-spacing="1"
+    fill="#FFFFFF">
+    Nexus<tspan fill="#00A8FF">Code</tspan>
+  </text>
+
+</svg>

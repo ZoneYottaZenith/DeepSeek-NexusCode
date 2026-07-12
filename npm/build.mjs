@@ -1,0 +1,128 @@
+import { execFileSync } from "node:child_process";
+import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const ROOT = join(HERE, "..");
+const STAGE = join(HERE, ".stage");
+
+const TARGETS = [
+  { node: "darwin-arm64", goos: "darwin", goarch: "arm64" },
+  { node: "darwin-x64", goos: "darwin", goarch: "amd64" },
+  { node: "linux-arm64", goos: "linux", goarch: "arm64" },
+  { node: "linux-x64", goos: "linux", goarch: "amd64" },
+  { node: "win32-arm64", goos: "windows", goarch: "arm64" },
+  { node: "win32-x64", goos: "windows", goarch: "amd64" },
+];
+
+const tag = process.argv[2] ?? process.env.GITHUB_REF_NAME;
+if (!tag) {
+  console.error("usage: node npm/build.mjs <tag>   (e.g. v1.0.0 or npm-v1.0.0)");
+  process.exit(1);
+}
+// npm ships on its own `npm-v*` tag (release-npm.yml); also accept a bare `v*`.
+const version = tag.replace(/^(npm-)?v/, "");
+const binaryVersion = `v${version}`;
+const publish = process.argv.includes("--publish");
+
+rmSync(STAGE, { recursive: true, force: true });
+mkdirSync(STAGE, { recursive: true });
+
+const subPackages = [];
+for (const t of TARGETS) {
+  const nodeName = t.node.replace("win32", "windows");
+  const name = `nexuscode-cli-${nodeName}`;
+  const dir = join(STAGE, `cli-${t.node}`);
+  const exe = t.goos === "windows" ? "nexuscode.exe" : "nexuscode";
+  mkdirSync(join(dir, "bin"), { recursive: true });
+
+  console.log(`build ${t.goos}/${t.goarch} -> ${name}`);
+  execFileSync(
+    "go",
+    [
+      "build",
+      "-trimpath",
+      "-ldflags",
+      `-s -w -X main.version=${binaryVersion}`,
+      "-o",
+      join(dir, "bin", exe),
+      "./cmd/nexuscode",
+    ],
+    {
+      cwd: ROOT,
+      stdio: "inherit",
+      env: { ...process.env, CGO_ENABLED: "0", GOOS: t.goos, GOARCH: t.goarch },
+    },
+  );
+
+  writeFileSync(
+    join(dir, "package.json"),
+    `${JSON.stringify(
+      {
+        name,
+        version,
+        description: `nexuscode prebuilt binary for ${t.node}.`,
+        os: [t.goos === "windows" ? "win32" : t.goos],
+        cpu: [t.goarch === "amd64" ? "x64" : "arm64"],
+        files: ["bin/"],
+        license: "MIT",
+        repository: {
+          type: "git",
+          url: "git+https://github.com/你的仓库/DeepSeek-NexusCode.git",
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  subPackages.push({ name, dir });
+}
+
+const mainDir = join(STAGE, "nexuscode");
+mkdirSync(mainDir, { recursive: true });
+cpSync(join(HERE, "nexuscode", "bin"), join(mainDir, "bin"), { recursive: true });
+cpSync(join(ROOT, "README.md"), join(mainDir, "README.md"));
+
+const mainPkg = JSON.parse(
+  readFileSync(join(HERE, "nexuscode", "package.json"), "utf8"),
+);
+mainPkg.version = version;
+for (const key of Object.keys(mainPkg.optionalDependencies)) {
+  mainPkg.optionalDependencies[key] = version;
+}
+writeFileSync(
+  join(mainDir, "package.json"),
+  `${JSON.stringify(mainPkg, null, 2)}\n`,
+);
+
+if (!publish) {
+  console.log(`\nstaged ${version} in ${STAGE} (dry run; pass --publish to publish)`);
+  process.exit(0);
+}
+
+// Three independent dist-tags: a `-canary.` build is the opt-in tester channel
+// (`canary`); any other prerelease (rc, beta) ships under `next`; a stable
+// version is promoted to `latest` automatically. The old "0.x stable owns
+// latest" rule was a migration guard while the 1.x Go line was rc-only — once
+// 1.x went stable it left `latest` pinned at 0.53.2, silently downgrading
+// every `npm update -g` / `pnpm update -g` user back to the retired line
+// (#5822). Stable now always moves `latest`; release-npm.yml verifies the tag
+// landed after publish.
+const distTag = version.includes("-canary.")
+  ? "canary"
+  : version.includes("-")
+    ? "next"
+    : "latest";
+const npmCmd = "npm";
+// Windows: execFileSync 找不到 .cmd 文件，用 {shell: true} 让 cmd.exe 处理
+const shellOpts = { shell: process.platform === "win32", cwd: null, stdio: "inherit" };
+
+const publishArgs = ["publish", "--access", "public", "--tag", distTag];
+
+for (const sub of subPackages) {
+  console.log(`publish ${sub.name}@${version} (${distTag})`);
+  execFileSync(npmCmd, publishArgs, { ...shellOpts, cwd: sub.dir });
+}
+console.log(`publish nexuscode@${version} (${distTag})`);
+execFileSync(npmCmd, publishArgs, { ...shellOpts, cwd: mainDir });

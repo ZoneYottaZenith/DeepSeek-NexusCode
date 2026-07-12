@@ -1,0 +1,48 @@
+name: Label issue version
+
+# Issue forms can't let a reporter set a label directly (that needs triage rights),
+# so the bug/feature forms carry a "Version line" dropdown and this workflow reads
+# the submitted value and applies the matching v1/v2 label on their behalf.
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+concurrency:
+  group: issue-version-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v9
+        with:
+          script: |
+            const body = context.payload.issue.body || '';
+            // Pull the "Version line" section out of the rendered issue form.
+            const section = body.split(/^###\s+/m).find(s => /^Version line/i.test(s)) || '';
+            const m = section.match(/\bv([12])\b/i);
+            if (!m) {
+              core.info('No version line found; nothing to label.');
+              return;
+            }
+            const choice = 'v' + m[1];
+            const other = choice === 'v2' ? 'v1' : 'v2';
+            await github.rest.issues.addLabels({
+              ...context.repo,
+              issue_number: context.issue.number,
+              labels: [choice],
+            });
+            // Keep v1/v2 mutually exclusive in case an edit flipped the choice.
+            try {
+              await github.rest.issues.removeLabel({
+                ...context.repo,
+                issue_number: context.issue.number,
+                name: other,
+              });
+            } catch (e) {
+              core.info(`No ${other} label to remove.`);
+            }
