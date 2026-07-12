@@ -1,11 +1,4 @@
 ﻿<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/logo.svg">
-    <img src="docs/logo.svg" alt="NexusCode" width="480"/>
-  </picture>
-</p>
-
-<p align="center">
   <a href="./README.md">📄 简体中文</a>
   &nbsp;·&nbsp;
   <strong>📄 English</strong>
