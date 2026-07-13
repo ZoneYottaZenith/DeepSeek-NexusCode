@@ -21,7 +21,7 @@
 
 Language: **English is the primary language for all code** — comments,
 user-facing strings, tool descriptions, system prompts, and this spec. The
-README is bilingual (`README.md` English + `README.zh-CN.md`).
+README is bilingual (`README.md` Chinese + `README.en.md` English).
 
 ## 2. Layout
 
@@ -29,7 +29,7 @@ README is bilingual (`README.md` English + `README.zh-CN.md`).
 nexuscode/
 ├── go.mod / go.sum          # module nexuscode; require BurntSushi/toml
 ├── Makefile                 # build / cross / vet / fmt / test
-├── README.md / README.zh-CN.md
+├── README.md / README.en.md
 ├── nexuscode.example.toml         # sample config
 ├── docs/SPEC.md             # this file
 ├── cmd/nexuscode/main.go          # entry; blank-imports built-in providers/tools

@@ -188,7 +188,7 @@ Plan 和 Goal 模式之间可随时切换，`Shift+Tab` 快速进入计划模式
 
 以上三种协作模式均可配合 **Ask**（默认，每步审批）、**Auto**（低风险自动放行）或 **YOLO**（全自动，`Ctrl+Y` 切换）审批模式使用，互不冲突。
 
-此外内置 `task`、`explore`、`research`、`review`、`security_review` 等**子 Agent**，每个拥有独立的工具白名单和只读/读写权限约束。支持 `depends_on` 依赖的并行子任务调度，可在高约束编码场景中提升并行效率。
+此外内置 `task`、`explore`、`research`、`review`、`security_review` 等**子 Agent**，每个拥有独立的工具白名单和只读/读写权限约束，可在高约束编码场景中提升并行效率。
 
 ## 安装
 

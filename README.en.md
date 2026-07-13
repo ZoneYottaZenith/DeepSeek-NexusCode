@@ -188,7 +188,7 @@ Switch between Plan and Goal mode at any time; press `Shift+Tab` to quickly ente
 
 All three collaboration modes can be paired with **Ask** (default, step-by-step approval), **Auto** (low-risk operations pass automatically), or **YOLO** (full auto-pilot, `Ctrl+Y` to toggle)—they are independent dimensions.
 
-Built-in **sub-agents**—`task`, `explore`, `research`, `review`, `security_review`—each have their own tool allowlist with read-only or read/write permissions. The `parallel_tasks` tool supports dependency-aware concurrent dispatch (`depends_on`), improving parallel efficiency in constrained coding scenarios.
+Built-in **sub-agents**—`task`, `explore`, `research`, `review`, `security_review`—each have their own tool allowlist with read-only or read/write permissions, improving parallel efficiency in constrained coding scenarios.
 
 ## Installation
 
