@@ -63,6 +63,9 @@ benchmarks/context-maintenance-e2e/run/
 # Process documentation (local notes, not for publish)
 /md过程性文档/
 
+# Rename/cleanup script archive (local only, not for publish)
+/scripts/rename_archive/
+
 # Desktop app (full source excluded from upload)
 /desktop/
 

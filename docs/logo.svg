@@ -1,33 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="760" height="170" viewBox="0 0 760 170" role="img" aria-label="NEXUSCODE — DeepSeek-native agent framework">
-  <title>NEXUSCODE</title>
+<svg width="760" height="170" viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NexusCode">
   <defs>
-    <!-- Signature cyan → violet → fuchsia gradient used across the TUI wordmark
-         and the brand mark. Renders well on both GitHub dark and light bg. -->
-    <linearGradient id="rx-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#5eead4"/>
-      <stop offset="15%" stop-color="#67e8f9"/>
-      <stop offset="30%" stop-color="#7dd3fc"/>
-      <stop offset="45%" stop-color="#93c5fd"/>
-      <stop offset="60%" stop-color="#a5b4fc"/>
-      <stop offset="75%" stop-color="#c4b5fd"/>
-      <stop offset="90%" stop-color="#d8b4fe"/>
-      <stop offset="100%" stop-color="#f0abfc"/>
+    <linearGradient id="logo-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B1020"/>
+      <stop offset="100%" stop-color="#1a1f3a"/>
     </linearGradient>
-    <linearGradient id="rx-grad-mark" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#5eead4"/>
-      <stop offset="50%" stop-color="#93c5fd"/>
-      <stop offset="100%" stop-color="#c4b5fd"/>
-    </linearGradient>
-    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="3" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
   </defs>
-
-  <!-- ◈ brand mark: concentric diamonds. Outer stroke pulses,
+  <rect width="100%" height="100%" fill="url(#logo-bg)" rx="12"/>
+  <text
+    x="400"
+    y="125"
+    text-anchor="middle"
+    font-family="Inter, Helvetica, Arial, sans-serif"
+    font-size="88"
+    font-weight="700"
+    letter-spacing="1"
+    fill="#FFFFFF">
+    Nexus<tspan fill="#00A8FF">Code</tspan>
+  </text>
+</svg>
        inner fill breathes, whole group rotates slowly. The rotation
        is subtle (12s / full turn) so it feels like a heartbeat, not a
        spinner. -->
