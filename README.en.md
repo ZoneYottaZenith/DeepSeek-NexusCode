@@ -2,6 +2,8 @@
   <a href="./README.md">📄 简体中文</a>
   &nbsp;·&nbsp;
   <strong>📄 English</strong>
+  &nbsp;·&nbsp;
+  <a href="https://NexusCode.sonnet.skin" style="font-weight:600">🌐 Visit Official Site</a>
 </p>
 
 <br/>
