@@ -29,47 +29,14 @@ Core design principles:
 
 ## Architecture
 
-```mermaid
-flowchart TB
-    classDef frontend fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    classDef core fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    classDef infra fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+NexusCode uses a transport-agnostic layered architecture. The core layer communicates with frontends through a command/event stream interface:
 
-    subgraph FE["Frontend"]
-        TUI["Terminal TUI (Bubble Tea)"]
-        HTTP["HTTP/SSE Server"]
-    end
+- **Frontend layer** — Terminal TUI (Bubble Tea) and HTTP/SSE server; only issues commands and renders events, contains no business logic
+- **Controller** — Transport-agnostic session driver handling Submit, Cancel, Approve, Rewind, Branch, and more
+- **Core runtime** — Agent tool loop (Harness Loop), MCP plugin adapter, hierarchical memory system (BM25 + Memory Compiler v5), Skills orchestration layer (reusable playbooks written in Markdown + frontmatter, supporting inline/subagent execution modes)
+- **Infrastructure** — Tool Registry (25+ built-in tools registered at compile time), Permission Policy, OS-level sandboxing (Seatbelt / bubblewrap / AppContainer), Checkpoint snapshot safety net
 
-    C["Controller (control pkg)\ntransport-agnostic · command + event stream"]
-
-    subgraph RT["Core Runtime"]
-        A["Agent (tool loop)"]
-        P["Plugin (MCP)"]
-        M["Memory"]
-    end
-
-    subgraph IS["Infrastructure"]
-        TR["Tool Registry"]
-        PM["Permission Policy"]
-        SB["Sandbox (OS Jail)"]
-        CK["Checkpoint"]
-    end
-
-    TUI --> C
-    HTTP --> C
-    C --> A
-    C --> P
-    C --> M
-    A --> TR
-    A --> PM
-    A --> SB
-    A --> CK
-
-    class TUI,HTTP frontend
-    class C core
-    class A,P,M core
-    class TR,PM,SB,CK infra
-```
+Each layer communicates through interface contracts and self-registers at runtime. Adding a new frontend requires no changes to the core logic, and each layer is independently testable.
 
 ## Technical Highlights
 
@@ -138,6 +105,8 @@ Extension mechanisms use interface type assertions:
 
 Built-in tools self-register at compile time via `init()`. MCP plugin tools are adapted to the same `Tool` interface at runtime—the agent sees a unified `*Registry` with no distinction between built-in and plugin tools.
 
+Built-in tools automatically detect file encodings (GBK, GB18030, and other CJK charsets), preserving the original encoding throughout read/edit/write cycles—no manual transcoding needed in CJK Windows environments.
+
 ### Checkpoints (Edit Safety Net)
 
 A git-free snapshot-based safety net. Before every writer tool executes, the agent records the file's pre-edit state:
@@ -166,6 +135,8 @@ Built-in Language Server Protocol manager supporting Go, TypeScript, Rust, Pytho
 - `lsp_references` — find all references
 
 A Tree-sitter-based code symbol index (`code_index`) is also included, providing file outlines and symbol candidates without requiring an external LSP—enabling code understanding in offline or lightweight scenarios.
+
+The **CodeGraph** feature (also built on Tree-sitter) goes further by providing symbol reference tracing and call graph analysis—replacing traditional embedding-based semantic search with zero API cost and zero external dependencies.
 
 ### MCP Protocol Implementation
 
@@ -216,6 +187,8 @@ NexusCode offers three progressive collaboration modes:
 Switch between Plan and Goal mode at any time; press `Shift+Tab` to quickly enter Plan mode.
 
 All three collaboration modes can be paired with **Ask** (default, step-by-step approval), **Auto** (low-risk operations pass automatically), or **YOLO** (full auto-pilot, `Ctrl+Y` to toggle)—they are independent dimensions.
+
+Built-in **sub-agents**—`task`, `explore`, `research`, `review`, `security_review`—each have their own tool allowlist with read-only or read/write permissions. The `parallel_tasks` tool supports dependency-aware concurrent dispatch (`depends_on`), improving parallel efficiency in constrained coding scenarios.
 
 ## Installation
 
@@ -275,6 +248,7 @@ echo "explain this code" | nexuscode run
 | `nexuscode setup` | Configuration wizard |
 | `nexuscode config` | Runtime configuration management |
 | `nexuscode mcp` | MCP server management |
+| `nexuscode acp` | ACP (Agent Client Protocol) editor integration |
 | `nexuscode doctor` | Environment diagnostics |
 | `nexuscode upgrade` | Self-update |
 

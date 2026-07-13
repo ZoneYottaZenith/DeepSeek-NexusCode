@@ -29,47 +29,14 @@ NexusCode 是一个以 Agent 为中心设计的终端编程助手。它不是一
 
 ## 架构
 
-```mermaid
-flowchart TB
-    classDef frontend fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    classDef core fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    classDef infra fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+NexusCode 采用传输无关的分层架构，核心层通过命令/事件流接口与前端解耦：
 
-    subgraph FE["前端 Frontend"]
-        TUI["Terminal TUI (Bubble Tea)"]
-        HTTP["HTTP/SSE Server"]
-    end
+- **前端层** — Terminal TUI（Bubble Tea）与 HTTP/SSE 服务，只做命令下发和事件渲染，不包含业务逻辑
+- **Controller** — 传输无关的会话驱动层，统一处理 Submit、Cancel、Approve、Rewind、Branch 等操作
+- **核心运行时** — Agent 工具循环（Harness Loop）、MCP 插件适配器、分层记忆系统（BM25 + Memory Compiler v5）、Skills 技能编排层（Markdown + frontmatter 编写的可复用剧本，inline/subagent 双执行模式）
+- **基础设施** — Tool Registry（25+ 内置工具编译期自注册）、Permission Policy 权限策略、OS 级沙盒隔离（Seatbelt / bubblewrap / AppContainer）、Checkpoint 快照安全网
 
-    C["Controller (control 包)\n传输无关 · 命令 + 事件流"]
-
-    subgraph RT["核心运行时 Core Runtime"]
-        A["Agent (工具循环)"]
-        P["Plugin (MCP)"]
-        M["Memory (记忆系统)"]
-    end
-
-    subgraph IS["基础设施 Infrastructure"]
-        TR["Tool Registry"]
-        PM["Permission Policy"]
-        SB["Sandbox (OS Jail)"]
-        CK["Checkpoint"]
-    end
-
-    TUI --> C
-    HTTP --> C
-    C --> A
-    C --> P
-    C --> M
-    A --> TR
-    A --> PM
-    A --> SB
-    A --> CK
-
-    class TUI,HTTP frontend
-    class C core
-    class A,P,M core
-    class TR,PM,SB,CK infra
-```
+各层通过接口契约组合，运行时自注册，新增前端无需改动核心逻辑，每层职责独立可测。
 
 ## 技术要点
 
@@ -138,6 +105,8 @@ type Tool interface {
 
 内置工具通过 `init()` 在编译期自注册到全局 registry；MCP 插件工具在运行时适配到同一 `Tool` 接口——agent 看到的只是一个统一的 `*Registry`，无差别对待。
 
+内置工具自动检测文件编码（GBK、GB18030 等 CJK 字符集），读写编辑全程保持原始编码不变，Windows 中文环境下无需手动转码。
+
 ### 快照安全网（Checkpoints）
 
 不依赖 git 的编辑安全网。每次写工具执行前，agent 记录文件的编辑前快照：
@@ -166,6 +135,8 @@ type Checkpoint struct {
 - `lsp_references` — 查找所有引用
 
 此外还内置了 Tree-sitter 代码符号索引（`code_index`），无需外部 LSP 即可提供文件大纲和符号定义，让 agent 在离线或轻量场景下也能理解代码结构。
+
+基于 Tree-sitter 的 **CodeGraph 代码图谱**更进一步，提供符号引用追踪和调用图分析，替代传统向量 Embedding 语义搜索，零 API 成本和零外部依赖。
 
 ### MCP 协议实现
 
@@ -216,6 +187,8 @@ NexusCode 支持三种渐进式的协作模式：
 Plan 和 Goal 模式之间可随时切换，`Shift+Tab` 快速进入计划模式。
 
 以上三种协作模式均可配合 **Ask**（默认，每步审批）、**Auto**（低风险自动放行）或 **YOLO**（全自动，`Ctrl+Y` 切换）审批模式使用，互不冲突。
+
+此外内置 `task`、`explore`、`research`、`review`、`security_review` 等**子 Agent**，每个拥有独立的工具白名单和只读/读写权限约束。支持 `depends_on` 依赖的并行子任务调度，可在高约束编码场景中提升并行效率。
 
 ## 安装
 
@@ -275,6 +248,7 @@ echo "解释这段代码" | nexuscode run
 | `nexuscode setup` | 配置向导 |
 | `nexuscode config` | 运行时配置管理 |
 | `nexuscode mcp` | MCP 服务器管理 |
+| `nexuscode acp` | ACP（Agent Client Protocol）编辑器集成 |
 | `nexuscode doctor` | 环境诊断 |
 | `nexuscode upgrade` | 自更新 |
 
